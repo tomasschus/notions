@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist } from "next/font/google";
+import { SessionProvider } from "@/components/SessionProvider";
 import "./globals.css";
 
 const geist = Geist({
@@ -23,7 +24,7 @@ export default function RootLayout({
         className={`${geist.variable} antialiased`}
         style={{ fontFamily: "var(--font-geist), system-ui, sans-serif" }}
       >
-        {children}
+        <SessionProvider>{children}</SessionProvider>
       </body>
     </html>
   );

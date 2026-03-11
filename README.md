@@ -1,5 +1,50 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
+## Autenticación y base de datos
+
+La app usa **NextAuth** con usuario/contraseña y **PostgreSQL** para sesiones y notas.
+
+1. Copiá `.env.example` a `.env` y completá:
+   - `DATABASE_URL`: conexión a PostgreSQL (ej. Supabase, Neon o local).
+   - `NEXTAUTH_SECRET`: generá uno con `openssl rand -base64 32`.
+   - `NEXTAUTH_URL`: en local `http://localhost:3000`.
+
+2. Creá las tablas en la base:
+   ```bash
+   npm run db:push
+   # o, para migraciones versionadas:
+   npm run db:migrate
+   ```
+
+3. Registro: entrá a **Registrarse** (sidebar o `/auth/signup`) y creá una cuenta. Las notas se guardan en la BD cuando estás logueado y se sincronizan entre dispositivos.
+
+## Docker
+
+**Desarrollo** (PostgreSQL + app con hot reload):
+
+```bash
+docker compose up -d db
+# Primera vez: aplicar schema
+docker compose run --rm app bunx prisma db push
+# Arrancar app en dev
+docker compose up app
+```
+
+App en http://localhost:3000, DB en localhost:5432 (usuario `notions`, contraseña `notions`, base `notions`). Creá un `.env` con `NEXTAUTH_SECRET` o usá el valor por defecto del compose.
+
+**Producción** (imagen con Bun, migraciones al arrancar):
+
+```bash
+docker build -t notions .
+docker run -p 3000:3000 \
+  -e DATABASE_URL="postgresql://..." \
+  -e NEXTAUTH_SECRET="..." \
+  -e NEXTAUTH_URL="https://tu-dominio.com" \
+  notions
+```
+
+Al iniciar el contenedor se ejecuta `prisma migrate deploy` y luego `bun run start`.
+
 ## Getting Started
 
 First, run the development server:

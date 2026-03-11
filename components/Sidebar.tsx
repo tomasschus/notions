@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { signOut } from "next-auth/react";
+import Link from "next/link";
 import { useNotesContext } from "@/context/NotesContext";
 import { NoteItem } from "./NoteItem";
 
@@ -9,7 +11,7 @@ interface SidebarProps {
 }
 
 export function Sidebar({ onOpenSettings }: SidebarProps) {
-  const { notes, activeNoteId, createNote, deleteNote, setActiveNoteId } =
+  const { notes, activeNoteId, createNote, deleteNote, setActiveNoteId, isSyncing, isLoggedIn } =
     useNotesContext();
   const [search, setSearch] = useState("");
 
@@ -75,7 +77,37 @@ export function Sidebar({ onOpenSettings }: SidebarProps) {
       </div>
 
       {/* Footer */}
-      <div className="px-3 pb-4 pt-2 border-t border-neutral-800">
+      <div className="px-3 pb-4 pt-2 border-t border-neutral-800 space-y-1">
+        {isLoggedIn && (
+          <div className="text-xs text-neutral-500 px-2 py-1 truncate" title="Sincronizado con la nube">
+            {isSyncing ? "Sincronizando…" : "✓ Sincronizado"}
+          </div>
+        )}
+        <div className="flex gap-1 flex-wrap">
+          {isLoggedIn ? (
+            <button
+              onClick={() => signOut({ callbackUrl: "/" })}
+              className="flex items-center gap-2 text-xs text-neutral-500 hover:text-neutral-300 transition-colors px-2 py-1.5 rounded hover:bg-neutral-800"
+            >
+              Cerrar sesión
+            </button>
+          ) : (
+            <>
+              <Link
+                href="/auth/signin"
+                className="flex items-center gap-2 text-xs text-neutral-500 hover:text-neutral-300 transition-colors px-2 py-1.5 rounded hover:bg-neutral-800"
+              >
+                Iniciar sesión
+              </Link>
+              <Link
+                href="/auth/signup"
+                className="flex items-center gap-2 text-xs text-neutral-500 hover:text-neutral-300 transition-colors px-2 py-1.5 rounded hover:bg-neutral-800"
+              >
+                Registrarse
+              </Link>
+            </>
+          )}
+        </div>
         <button
           onClick={onOpenSettings}
           className="flex items-center gap-2 text-xs text-neutral-500 hover:text-neutral-300 transition-colors w-full px-2 py-1.5 rounded hover:bg-neutral-800"

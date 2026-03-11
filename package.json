@@ -6,10 +6,15 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "db:generate": "prisma generate",
+    "db:push": "prisma db push",
+    "db:migrate": "prisma migrate dev"
   },
   "dependencies": {
+    "@auth/prisma-adapter": "^2.11.1",
     "@mlc-ai/web-llm": "^0.2.81",
+    "@prisma/client": "^5.22.0",
     "@tiptap/extension-color": "^3.20.1",
     "@tiptap/extension-highlight": "^3.20.1",
     "@tiptap/extension-text-style": "^3.20.1",
@@ -17,12 +22,16 @@
     "@tiptap/pm": "^3.20.1",
     "@tiptap/react": "^3.20.1",
     "@tiptap/starter-kit": "^3.20.1",
+    "bcryptjs": "^3.0.3",
     "next": "16.1.6",
+    "next-auth": "^4.24.13",
     "openai": "^6.27.0",
     "react": "19.2.3",
     "react-dom": "19.2.3"
   },
   "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "prisma": "^5.22.0",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
