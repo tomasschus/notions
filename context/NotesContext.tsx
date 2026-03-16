@@ -5,7 +5,6 @@ import {
   useContext,
   useCallback,
   ReactNode,
-  useMemo,
   useState,
   useEffect,
 } from "react";
@@ -15,13 +14,10 @@ import { useLocalStorage } from "@/hooks/useLocalStorage";
 
 interface NotesContextValue {
   notes: Note[];
-  activeNoteId: string | null;
-  activeNote: Note | undefined;
   settings: AppSettings;
-  createNote: () => void;
+  createNote: () => Promise<string | null>;
   updateNote: (id: string, patch: Partial<Pick<Note, "title" | "body">>) => void;
   deleteNote: (id: string) => void;
-  setActiveNoteId: (id: string | null) => void;
   updateSettings: (patch: Partial<AppSettings>) => void;
   isSyncing: boolean;
   isLoggedIn: boolean;
@@ -41,13 +37,8 @@ export function NotesProvider({ children }: { children: ReactNode }) {
   const isLoggedIn = !!session?.user;
 
   const [localNotes, setLocalNotes] = useLocalStorage<Note[]>("notions:notes", []);
-  const [localActiveId, setLocalActiveId] = useLocalStorage<string | null>(
-    "notions:activeNoteId",
-    null
-  );
 
   const [syncedNotes, setSyncedNotes] = useState<Note[]>([]);
-  const [syncedActiveId, setSyncedActiveId] = useState<string | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
 
   const [settings, setSettings] = useLocalStorage<AppSettings>(
@@ -56,9 +47,6 @@ export function NotesProvider({ children }: { children: ReactNode }) {
   );
 
   const notes = isLoggedIn ? syncedNotes : localNotes;
-  const activeNoteId = isLoggedIn ? syncedActiveId : localActiveId;
-  const setActiveNoteId = isLoggedIn ? setSyncedActiveId : setLocalActiveId;
-  const setNotes = isLoggedIn ? setSyncedNotes : setLocalNotes;
 
   useEffect(() => {
     if (status !== "authenticated") return;
@@ -68,7 +56,6 @@ export function NotesProvider({ children }: { children: ReactNode }) {
       .then((data) => {
         if (!cancelled) {
           setSyncedNotes(data);
-          setSyncedActiveId(data[0]?.id ?? null);
         }
       })
       .catch(() => {
@@ -82,12 +69,7 @@ export function NotesProvider({ children }: { children: ReactNode }) {
     };
   }, [status]);
 
-  const activeNote = useMemo(
-    () => notes.find((n) => n.id === activeNoteId),
-    [notes, activeNoteId]
-  );
-
-  const createNote = useCallback(async () => {
+  const createNote = useCallback(async (): Promise<string | null> => {
     const newNote: Note = {
       id: crypto.randomUUID(),
       title: "",
@@ -105,16 +87,16 @@ export function NotesProvider({ children }: { children: ReactNode }) {
         if (!res.ok) throw new Error("Create failed");
         const created = await res.json();
         setSyncedNotes((prev) => [created, ...prev]);
-        setSyncedActiveId(created.id);
+        return created.id;
       } catch {
         setSyncedNotes((prev) => [newNote, ...prev]);
-        setSyncedActiveId(newNote.id);
+        return newNote.id;
       }
     } else {
       setLocalNotes((prev) => [newNote, ...prev]);
-      setLocalActiveId(newNote.id);
+      return newNote.id;
     }
-  }, [isLoggedIn, setLocalNotes, setLocalActiveId]);
+  }, [isLoggedIn, setLocalNotes]);
 
   const updateNote = useCallback(
     async (id: string, patch: Partial<Pick<Note, "title" | "body">>) => {
@@ -154,21 +136,11 @@ export function NotesProvider({ children }: { children: ReactNode }) {
           // ignore
         }
         setSyncedNotes((prev) => prev.filter((n) => n.id !== id));
-        setSyncedActiveId((prev) => {
-          if (prev !== id) return prev;
-          const remaining = syncedNotes.filter((n) => n.id !== id);
-          return remaining[0]?.id ?? null;
-        });
       } else {
         setLocalNotes((prev) => prev.filter((n) => n.id !== id));
-        setLocalActiveId((prev) => {
-          if (prev !== id) return prev;
-          const remaining = localNotes.filter((n) => n.id !== id);
-          return remaining[0]?.id ?? null;
-        });
       }
     },
-    [isLoggedIn, setLocalNotes, setLocalActiveId, syncedNotes, localNotes]
+    [isLoggedIn, setLocalNotes]
   );
 
   const updateSettings = useCallback(
@@ -182,13 +154,10 @@ export function NotesProvider({ children }: { children: ReactNode }) {
     <NotesContext.Provider
       value={{
         notes,
-        activeNoteId,
-        activeNote,
         settings,
         createNote,
         updateNote,
         deleteNote,
-        setActiveNoteId,
         updateSettings,
         isSyncing,
         isLoggedIn,
