@@ -97,5 +97,26 @@ export function useWebLLM() {
     }
   }, []);
 
-  return { state, load, complete };
+  const summarize = useCallback(async (text: string): Promise<string> => {
+    if (!engineInstance) return "";
+    try {
+      const res = await engineInstance.chat.completions.create({
+        messages: [
+          {
+            role: "system",
+            content:
+              "You are a summarization assistant. Summarize the provided text concisely, preserving the key points. Output only the summary, nothing else.",
+          },
+          { role: "user", content: text },
+        ],
+        max_tokens: 300,
+        temperature: 0.5,
+      });
+      return res.choices[0]?.message?.content ?? "";
+    } catch {
+      return "";
+    }
+  }, []);
+
+  return { state, load, complete, summarize };
 }

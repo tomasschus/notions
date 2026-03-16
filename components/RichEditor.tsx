@@ -122,11 +122,13 @@ const FONT_SIZES = [
 
 function Btn({
   active,
+  disabled,
   onClick,
   title,
   children,
 }: {
   active?: boolean;
+  disabled?: boolean;
   onClick: () => void;
   title?: string;
   children: React.ReactNode;
@@ -135,11 +137,14 @@ function Btn({
     <button
       onMouseDown={(e) => {
         e.preventDefault();
-        onClick();
+        if (!disabled) onClick();
       }}
       title={title}
+      disabled={disabled}
       className={`px-1.5 py-1 rounded text-sm transition-colors ${
-        active
+        disabled
+          ? "text-neutral-600 cursor-not-allowed"
+          : active
           ? "bg-neutral-600 text-neutral-100"
           : "text-neutral-400 hover:bg-neutral-700 hover:text-neutral-200"
       }`}
@@ -227,9 +232,10 @@ export function RichEditor({
 }: RichEditorProps) {
   const [picker, setPicker] = useState<"text" | "highlight" | null>(null);
   const [hasGhost, setHasGhost] = useState(false);
+  const [isSummarizing, setIsSummarizing] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const abortRef = useRef<AbortController | null>(null);
-  const { state: webllmState, load, complete } = useWebLLM();
+  const { state: webllmState, load, complete, summarize } = useWebLLM();
 
   // Load WebLLM when provider is "browser"
   useEffect(() => {
@@ -295,6 +301,54 @@ export function RichEditor({
       }
     }, 1000);
   };
+
+  const triggerSummarize = async () => {
+    if (!editor) return;
+    const { from, to } = editor.state.selection;
+    if (from === to) return;
+
+    const selectedText = editor.state.doc.textBetween(from, to, " ");
+    if (!selectedText.trim()) return;
+
+    setIsSummarizing(true);
+    try {
+      let summaryText = "";
+
+      if (provider === "browser") {
+        if (webllmState.status !== "ready") return;
+        summaryText = await summarize(selectedText);
+      } else {
+        const needsKey = provider !== "ollama";
+        if (needsKey && !apiKey) return;
+
+        const res = await fetch("/api/summarize", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${apiKey}`,
+          },
+          body: JSON.stringify({ text: selectedText, model, provider }),
+        });
+        const data = await res.json();
+        if (res.ok && data.summary) {
+          summaryText = data.summary;
+        } else if (!res.ok) {
+          console.warn("[summarize]", data.error ?? res.status);
+        }
+      }
+
+      if (summaryText) {
+        editor.chain().focus().insertContentAt({ from, to }, summaryText).run();
+      }
+    } finally {
+      setIsSummarizing(false);
+    }
+  };
+
+  const hasLLM =
+    provider === "browser" ||
+    provider === "ollama" ||
+    (!!apiKey && (provider === "openai" || provider === "groq"));
 
   const editor = useEditor({
     extensions: [
@@ -447,6 +501,24 @@ export function RichEditor({
         <Btn onClick={() => editor.chain().focus().clearNodes().unsetAllMarks().run()} title="Limpiar formato">
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 11h5M8 3l3 3-5 5-3-3 5-5zM1 13l3-3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/></svg>
         </Btn>
+
+        {/* Summarize — only shown when an LLM is configured */}
+        {hasLLM && (
+          <>
+            <Sep />
+            <Btn
+              onClick={triggerSummarize}
+              disabled={isSummarizing || (provider === "browser" && webllmState.status !== "ready")}
+              title="Resumir selección"
+            >
+              {isSummarizing ? (
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="animate-spin"><path d="M7 1.5A5.5 5.5 0 1 1 1.5 7" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>
+              ) : (
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 3h10M2 6h7M2 9h8M2 12h5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/></svg>
+              )}
+            </Btn>
+          </>
+        )}
 
         {/* Ghost hint */}
         {hasGhost && (
