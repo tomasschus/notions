@@ -49,7 +49,14 @@ export function NotesProvider({ children }: { children: ReactNode }) {
   const notes = isLoggedIn ? syncedNotes : localNotes;
 
   useEffect(() => {
-    if (status !== "authenticated") return;
+    if (status === "loading") {
+      setIsSyncing(true);
+      return;
+    }
+    if (status !== "authenticated") {
+      setIsSyncing(false);
+      return;
+    }
     let cancelled = false;
     setIsSyncing(true);
     fetchNotes()

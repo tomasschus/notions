@@ -7,5 +7,5 @@ export default function NotePage() {
   const params = useParams();
   const noteId = params.id as string;
 
-  return <Editor noteId={noteId} />;
+  return <Editor key={noteId} noteId={noteId} />;
 }
