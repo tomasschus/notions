@@ -6,11 +6,46 @@ import Underline from "@tiptap/extension-underline";
 import { Color } from "@tiptap/extension-color";
 import { TextStyle } from "@tiptap/extension-text-style";
 import Highlight from "@tiptap/extension-highlight";
+import Image from "@tiptap/extension-image";
 import { Plugin, PluginKey } from "@tiptap/pm/state";
 import { Decoration, DecorationSet } from "@tiptap/pm/view";
 import { useEffect, useRef, useState } from "react";
 import { Provider } from "@/types";
 import { useWebLLM } from "@/hooks/useWebLLM";
+
+// ─── Image helpers ────────────────────────────────────────────────────────────
+
+const MAX_IMAGE_PX = 1200;
+const IMAGE_QUALITY = 0.82;
+
+function compressImage(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const img = new window.Image();
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      let { width, height } = img;
+      if (width > MAX_IMAGE_PX || height > MAX_IMAGE_PX) {
+        if (width >= height) {
+          height = Math.round((height * MAX_IMAGE_PX) / width);
+          width = MAX_IMAGE_PX;
+        } else {
+          width = Math.round((width * MAX_IMAGE_PX) / height);
+          height = MAX_IMAGE_PX;
+        }
+      }
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) { reject(new Error("Failed to get canvas context")); return; }
+      ctx.drawImage(img, 0, 0, width, height);
+      resolve(canvas.toDataURL("image/jpeg", IMAGE_QUALITY));
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("Failed to load image")); };
+    img.src = url;
+  });
+}
 
 // ─── Ghost text plugin ────────────────────────────────────────────────────────
 
@@ -229,6 +264,7 @@ export function RichEditor({
   const [hasGhost, setHasGhost] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const { state: webllmState, load, complete } = useWebLLM();
 
   // Load WebLLM when provider is "browser"
@@ -296,6 +332,19 @@ export function RichEditor({
     }, 1000);
   };
 
+  const insertImageFile = async (
+    editorInstance: ReturnType<typeof useEditor>,
+    file: File
+  ) => {
+    if (!editorInstance || !file.type.startsWith("image/")) return;
+    try {
+      const src = await compressImage(file);
+      editorInstance.chain().focus().setImage({ src }).run();
+    } catch {
+      // silently ignore failed image inserts
+    }
+  };
+
   const editor = useEditor({
     extensions: [
       StarterKit,
@@ -305,10 +354,32 @@ export function RichEditor({
       Color,
       Highlight.configure({ multicolor: true }),
       GhostExtension,
+      Image.configure({ inline: false, allowBase64: true }),
     ],
     content,
     editorProps: {
       attributes: { class: "focus:outline-none" },
+      handlePaste: (_view: unknown, event: ClipboardEvent) => {
+        const items = Array.from(
+          (event.clipboardData?.items ?? []) as DataTransferItemList
+        );
+        const imageItem = items.find((i) => i.type.startsWith("image/"));
+        if (!imageItem) return false;
+        event.preventDefault();
+        const file = imageItem.getAsFile();
+        if (file) insertImageFile(editor, file);
+        return true;
+      },
+      handleDrop: (_view: unknown, event: DragEvent) => {
+        const files = Array.from(
+          (event.dataTransfer?.files ?? []) as FileList
+        );
+        const imageFile = files.find((f) => f.type.startsWith("image/"));
+        if (!imageFile) return false;
+        event.preventDefault();
+        insertImageFile(editor, imageFile);
+        return true;
+      },
     },
     onUpdate: ({ editor }) => {
       const html = editor.getHTML();
@@ -447,6 +518,25 @@ export function RichEditor({
         <Btn onClick={() => editor.chain().focus().clearNodes().unsetAllMarks().run()} title="Limpiar formato">
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 11h5M8 3l3 3-5 5-3-3 5-5zM1 13l3-3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/></svg>
         </Btn>
+
+        <Sep />
+
+        {/* Insert image */}
+        <Btn onClick={() => fileInputRef.current?.click()} title="Insertar imagen">
+          <svg aria-hidden="true" width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="1" y="2" width="12" height="10" rx="1.5" stroke="currentColor" strokeWidth="1.2"/><circle cx="4.5" cy="5.5" r="1.2" fill="currentColor"/><path d="M1 10l3.5-3.5 2.5 2.5 2-2 3 3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+          <span className="sr-only">Insertar imagen</span>
+        </Btn>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (file) insertImageFile(editor, file);
+            e.target.value = "";
+          }}
+        />
 
         {/* Ghost hint */}
         {hasGhost && (

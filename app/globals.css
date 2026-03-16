@@ -112,3 +112,16 @@ select option { background: #1f2937; color: #e5e7eb; }
   float: left;
   height: 0;
 }
+
+.tiptap-editor .tiptap img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 6px;
+  display: block;
+  margin: 0.5em 0;
+}
+
+.tiptap-editor .tiptap img.ProseMirror-selectednode {
+  outline: 2px solid #60a5fa;
+  outline-offset: 2px;
+}
