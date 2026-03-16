@@ -4,36 +4,47 @@ import { useState, useEffect, useRef } from "react";
 import { useNotesContext } from "@/context/NotesContext";
 import { RichEditor } from "./RichEditor";
 
-export function Editor() {
-  const { activeNote, updateNote, settings } = useNotesContext();
+interface EditorProps {
+  noteId: string;
+}
+
+export function Editor({ noteId }: EditorProps) {
+  const { notes, updateNote, settings, isSyncing } = useNotesContext();
+  const note = notes.find((n) => n.id === noteId);
   const [localTitle, setLocalTitle] = useState("");
   const [localBody, setLocalBody] = useState("");
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const hasInitialized = useRef(false);
 
-  // Reset when switching notes
+  // Initialize local state once when note data first becomes available
   useEffect(() => {
-    setLocalTitle(activeNote?.title ?? "");
-    setLocalBody(activeNote?.body ?? "");
-  }, [activeNote?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (note && !hasInitialized.current) {
+      setLocalTitle(note.title);
+      setLocalBody(note.body);
+      hasInitialized.current = true;
+    }
+  }, [note]);
 
-  // Autosave
+  // Autosave — noteId is stable for this component instance (URL-based routing)
   useEffect(() => {
-    if (!activeNote) return;
+    if (!hasInitialized.current) return;
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     saveTimerRef.current = setTimeout(() => {
-      updateNote(activeNote.id, { title: localTitle, body: localBody });
+      updateNote(noteId, { title: localTitle, body: localBody });
     }, 400);
     return () => {
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     };
   }, [localTitle, localBody]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  if (!activeNote) {
+  if (!note) {
     return (
       <div className="flex-1 flex items-center justify-center text-neutral-600 select-none">
         <div className="text-center">
           <div className="text-4xl mb-3">✦</div>
-          <p className="text-sm">Seleccioná o creá una nota</p>
+          <p className="text-sm">
+            {isSyncing ? "Cargando…" : "Nota no encontrada"}
+          </p>
         </div>
       </div>
     );
@@ -56,7 +67,7 @@ export function Editor() {
       <RichEditor
         content={localBody}
         onChange={setLocalBody}
-        noteId={activeNote.id}
+        noteId={noteId}
         title={localTitle}
         apiKey={settings.openaiApiKey}
         model={settings.model}

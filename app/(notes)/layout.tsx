@@ -2,18 +2,21 @@
 
 import { useState } from "react";
 import { NotesProvider } from "@/context/NotesContext";
-import { Sidebar } from "./Sidebar";
-import { Editor } from "./Editor";
-import { SettingsModal } from "./SettingsModal";
+import { Sidebar } from "@/components/Sidebar";
+import { SettingsModal } from "@/components/SettingsModal";
 
-export function AppShell() {
+export default function NotesLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   return (
     <NotesProvider>
       <div className="flex h-screen bg-neutral-950 text-neutral-100 overflow-hidden">
         <Sidebar onOpenSettings={() => setIsSettingsOpen(true)} />
-        <Editor />
+        {children}
       </div>
       <SettingsModal
         isOpen={isSettingsOpen}

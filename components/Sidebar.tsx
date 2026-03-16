@@ -3,6 +3,7 @@
 import { useState, useMemo } from "react";
 import { signOut } from "next-auth/react";
 import Link from "next/link";
+import { useRouter, usePathname } from "next/navigation";
 import { useNotesContext } from "@/context/NotesContext";
 import { NoteItem } from "./NoteItem";
 
@@ -11,9 +12,16 @@ interface SidebarProps {
 }
 
 export function Sidebar({ onOpenSettings }: SidebarProps) {
-  const { notes, activeNoteId, createNote, deleteNote, setActiveNoteId, isSyncing, isLoggedIn } =
+  const { notes, createNote, deleteNote, isSyncing, isLoggedIn } =
     useNotesContext();
+  const router = useRouter();
+  const pathname = usePathname();
   const [search, setSearch] = useState("");
+
+  // Derive active note ID from the current URL path
+  const activeNoteId = pathname.startsWith("/notes/")
+    ? pathname.slice("/notes/".length)
+    : null;
 
   const filteredNotes = useMemo(() => {
     const q = search.toLowerCase();
@@ -26,6 +34,23 @@ export function Sidebar({ onOpenSettings }: SidebarProps) {
       .sort((a, b) => b.updatedAt - a.updatedAt);
   }, [notes, search]);
 
+  const handleCreateNote = async () => {
+    const id = await createNote();
+    if (id) router.push(`/notes/${id}`);
+  };
+
+  const handleDeleteNote = async (id: string) => {
+    const remaining = notes.filter((n) => n.id !== id);
+    await deleteNote(id);
+    if (id === activeNoteId) {
+      if (remaining.length > 0) {
+        router.push(`/notes/${remaining[0].id}`);
+      } else {
+        router.push("/");
+      }
+    }
+  };
+
   return (
     <div className="w-60 flex flex-col h-full bg-neutral-900 border-r border-neutral-800">
       {/* Header */}
@@ -33,7 +58,7 @@ export function Sidebar({ onOpenSettings }: SidebarProps) {
         <div className="flex items-center justify-between mb-3">
           <span className="text-sm font-semibold text-neutral-300">Notas</span>
           <button
-            onClick={createNote}
+            onClick={handleCreateNote}
             className="text-neutral-400 hover:text-neutral-100 transition-colors p-1 rounded hover:bg-neutral-800"
             title="Nueva nota"
           >
@@ -70,8 +95,8 @@ export function Sidebar({ onOpenSettings }: SidebarProps) {
             key={note.id}
             note={note}
             isActive={note.id === activeNoteId}
-            onSelect={() => setActiveNoteId(note.id)}
-            onDelete={() => deleteNote(note.id)}
+            onSelect={() => router.push(`/notes/${note.id}`)}
+            onDelete={() => handleDeleteNote(note.id)}
           />
         ))}
       </div>
