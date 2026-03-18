@@ -1,0 +1,73 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e1]:
+  - generic [ref=e2]:
+    - generic [ref=e3]:
+      - generic [ref=e4]:
+        - generic [ref=e5]:
+          - generic [ref=e6]: Notas
+          - button "Nueva nota" [active] [ref=e7]:
+            - img [ref=e8]
+        - textbox "Buscar..." [ref=e10]
+      - generic [ref=e12] [cursor=pointer]:
+        - generic [ref=e13]:
+          - paragraph [ref=e14]: Sin título
+          - paragraph [ref=e15]: Nota vacía
+          - paragraph [ref=e16]: 07:33 p. m.
+        - button "Eliminar nota" [ref=e17]:
+          - img [ref=e18]
+      - generic [ref=e20]:
+        - generic [ref=e21]:
+          - link "Iniciar sesión" [ref=e22] [cursor=pointer]:
+            - /url: /auth/signin
+          - link "Registrarse" [ref=e23] [cursor=pointer]:
+            - /url: /auth/signup
+        - button "Configuración" [ref=e24]:
+          - img [ref=e25]
+          - text: Configuración
+    - generic [ref=e28]:
+      - textbox "Sin título" [ref=e30]
+      - generic [ref=e31]:
+        - generic [ref=e32]:
+          - combobox [ref=e33]:
+            - option "Pequeño"
+            - option "Normal" [selected]
+            - option "Grande"
+            - option "Enorme"
+          - button "H1" [ref=e34]
+          - button "H2" [ref=e35]
+          - button "H3" [ref=e36]
+          - button "B" [ref=e38]:
+            - strong [ref=e39]: B
+          - button "I" [ref=e40]:
+            - emphasis [ref=e41]: I
+          - button "U" [ref=e42]
+          - button "S" [ref=e43]
+          - button "A" [ref=e46]:
+            - generic [ref=e48]: A
+          - button "▪" [ref=e51]:
+            - generic [ref=e53]: ▪
+          - button "Lista" [ref=e56]:
+            - img [ref=e57]
+          - button "Lista numerada" [ref=e64]:
+            - img [ref=e65]:
+              - generic [ref=e66]: "1."
+              - generic [ref=e68]: "2."
+              - generic [ref=e70]: "3."
+          - button "Código inline" [ref=e73]:
+            - img [ref=e74]
+          - button "Bloque de código" [ref=e76]:
+            - img [ref=e77]
+          - button "Cita" [ref=e80]:
+            - img [ref=e81]
+          - button "Limpiar formato" [ref=e85]:
+            - img [ref=e86]
+          - button "Insertar imagen" [ref=e89]:
+            - img [ref=e90]
+            - generic [ref=e94]: Insertar imagen
+        - paragraph [ref=e98]
+  - button "Open Next.js Dev Tools" [ref=e104] [cursor=pointer]:
+    - img [ref=e105]
+  - alert [ref=e108]
+```

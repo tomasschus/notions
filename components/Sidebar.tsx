@@ -41,7 +41,10 @@ export function Sidebar({ onOpenSettings }: SidebarProps) {
 
   const handleCreateNote = useCallback(async () => {
     const id = await createNote();
-    if (id) setTimeout(() => router.push(`/notes/${id}`), 0);
+    if (id) {
+      // Dar un tick para que el estado (nueva nota en la lista) se commit antes de navegar
+      setTimeout(() => router.push(`/notes/${id}`), 50);
+    }
   }, [createNote, router]);
 
   const handleSelectNote = useCallback(
@@ -67,9 +70,11 @@ export function Sidebar({ onOpenSettings }: SidebarProps) {
         <div className="flex items-center justify-between mb-3">
           <span className="text-sm font-semibold text-neutral-300">Notas</span>
           <button
+            type="button"
             onClick={handleCreateNote}
             className="text-neutral-400 hover:text-neutral-100 transition-colors p-1 rounded hover:bg-neutral-800"
             title="Nueva nota"
+            data-testid="sidebar-new-note"
           >
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
               <path
