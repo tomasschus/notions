@@ -1,12 +1,13 @@
 "use client";
 
+import { memo } from "react";
 import { Note } from "@/types";
 
 interface NoteItemProps {
   note: Note;
   isActive: boolean;
-  onSelect: () => void;
-  onDelete: () => void;
+  onSelect: (id: string) => void;
+  onDelete: (id: string) => void;
 }
 
 function formatDate(ts: number): string {
@@ -22,10 +23,16 @@ function formatDate(ts: number): string {
   return date.toLocaleDateString("es-AR", { day: "numeric", month: "short" });
 }
 
-export function NoteItem({ note, isActive, onSelect, onDelete }: NoteItemProps) {
+function NoteItemComponent({ note, isActive, onSelect, onDelete }: NoteItemProps) {
+  const handleClick = () => onSelect(note.id);
+  const handleDelete = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onDelete(note.id);
+  };
+
   return (
     <div
-      onClick={onSelect}
+      onClick={handleClick}
       className={`group relative flex items-start px-3 py-2.5 rounded-lg cursor-pointer transition-colors ${
         isActive
           ? "bg-neutral-700 text-neutral-100"
@@ -45,10 +52,7 @@ export function NoteItem({ note, isActive, onSelect, onDelete }: NoteItemProps) 
       </div>
 
       <button
-        onClick={(e) => {
-          e.stopPropagation();
-          onDelete();
-        }}
+        onClick={handleDelete}
         className="absolute right-2 top-2.5 opacity-0 group-hover:opacity-100 transition-opacity text-neutral-500 hover:text-red-400 p-0.5 rounded"
         title="Eliminar nota"
       >
@@ -64,3 +68,5 @@ export function NoteItem({ note, isActive, onSelect, onDelete }: NoteItemProps) 
     </div>
   );
 }
+
+export const NoteItem = memo(NoteItemComponent);

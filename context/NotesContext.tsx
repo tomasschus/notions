@@ -4,6 +4,7 @@ import {
   createContext,
   useContext,
   useCallback,
+  useMemo,
   ReactNode,
   useState,
   useEffect,
@@ -157,19 +158,31 @@ export function NotesProvider({ children }: { children: ReactNode }) {
     [setSettings]
   );
 
+  const value = useMemo(
+    () => ({
+      notes,
+      settings,
+      createNote,
+      updateNote,
+      deleteNote,
+      updateSettings,
+      isSyncing,
+      isLoggedIn,
+    }),
+    [
+      notes,
+      settings,
+      createNote,
+      updateNote,
+      deleteNote,
+      updateSettings,
+      isSyncing,
+      isLoggedIn,
+    ]
+  );
+
   return (
-    <NotesContext.Provider
-      value={{
-        notes,
-        settings,
-        createNote,
-        updateNote,
-        deleteNote,
-        updateSettings,
-        isSyncing,
-        isLoggedIn,
-      }}
-    >
+    <NotesContext.Provider value={value}>
       {children}
     </NotesContext.Provider>
   );

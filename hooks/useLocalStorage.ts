@@ -2,11 +2,22 @@
 
 import { useState, useEffect, Dispatch, SetStateAction } from "react";
 
+function readFromStorage<T>(key: string, initial: T): T {
+  if (typeof window === "undefined") return initial;
+  try {
+    const stored = localStorage.getItem(key);
+    if (stored !== null) return JSON.parse(stored) as T;
+  } catch {
+    // ignore parse errors
+  }
+  return initial;
+}
+
 export function useLocalStorage<T>(
   key: string,
   initial: T
 ): [T, Dispatch<SetStateAction<T>>] {
-  const [value, setValue] = useState<T>(initial);
+  const [value, setValue] = useState<T>(() => readFromStorage(key, initial));
 
   useEffect(() => {
     try {

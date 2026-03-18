@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { signOut } from "next-auth/react";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
@@ -11,6 +11,8 @@ interface SidebarProps {
   onOpenSettings: () => void;
 }
 
+const NOTES_PATH_PREFIX = "/notes/";
+
 export function Sidebar({ onOpenSettings }: SidebarProps) {
   const { notes, createNote, deleteNote, isSyncing, isLoggedIn } =
     useNotesContext();
@@ -18,10 +20,13 @@ export function Sidebar({ onOpenSettings }: SidebarProps) {
   const pathname = usePathname();
   const [search, setSearch] = useState("");
 
-  // Derive active note ID from the current URL path
-  const activeNoteId = pathname.startsWith("/notes/")
-    ? pathname.slice("/notes/".length)
-    : null;
+  const activeNoteId = useMemo(
+    () =>
+      pathname.startsWith(NOTES_PATH_PREFIX)
+        ? pathname.slice(NOTES_PATH_PREFIX.length)
+        : null,
+    [pathname]
+  );
 
   const filteredNotes = useMemo(() => {
     const q = search.toLowerCase();
@@ -34,22 +39,26 @@ export function Sidebar({ onOpenSettings }: SidebarProps) {
       .sort((a, b) => b.updatedAt - a.updatedAt);
   }, [notes, search]);
 
-  const handleCreateNote = async () => {
+  const handleCreateNote = useCallback(async () => {
     const id = await createNote();
-    if (id) router.push(`/notes/${id}`);
-  };
+    if (id) setTimeout(() => router.push(`/notes/${id}`), 0);
+  }, [createNote, router]);
 
-  const handleDeleteNote = async (id: string) => {
-    const remaining = notes.filter((n) => n.id !== id);
-    await deleteNote(id);
-    if (id === activeNoteId) {
-      if (remaining.length > 0) {
-        router.push(`/notes/${remaining[0].id}`);
-      } else {
-        router.push("/");
+  const handleSelectNote = useCallback(
+    (id: string) => router.push(`/notes/${id}`),
+    [router]
+  );
+
+  const handleDeleteNote = useCallback(
+    async (id: string) => {
+      const remaining = notes.filter((n) => n.id !== id);
+      await deleteNote(id);
+      if (id === activeNoteId) {
+        router.push(remaining.length > 0 ? `/notes/${remaining[0].id}` : "/");
       }
-    }
-  };
+    },
+    [notes, activeNoteId, deleteNote, router]
+  );
 
   return (
     <div className="w-60 flex flex-col h-full bg-neutral-900 border-r border-neutral-800">
@@ -95,8 +104,8 @@ export function Sidebar({ onOpenSettings }: SidebarProps) {
             key={note.id}
             note={note}
             isActive={note.id === activeNoteId}
-            onSelect={() => router.push(`/notes/${note.id}`)}
-            onDelete={() => handleDeleteNote(note.id)}
+            onSelect={handleSelectNote}
+            onDelete={handleDeleteNote}
           />
         ))}
       </div>

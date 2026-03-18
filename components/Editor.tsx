@@ -1,59 +1,67 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useNotesContext } from "@/context/NotesContext";
 import { RichEditor } from "./RichEditor";
+
+const AUTOSAVE_MS = 400;
 
 interface EditorProps {
   noteId: string;
 }
 
+function EditorEmpty({ isSyncing }: { isSyncing: boolean }) {
+  return (
+    <div className="flex-1 flex items-center justify-center text-neutral-600 select-none">
+      <div className="text-center">
+        <div className="text-4xl mb-3">✦</div>
+        <p className="text-sm">
+          {isSyncing ? "Cargando…" : "Nota no encontrada"}
+        </p>
+      </div>
+    </div>
+  );
+}
+
 export function Editor({ noteId }: EditorProps) {
   const { notes, updateNote, settings, isSyncing } = useNotesContext();
-  const note = notes.find((n) => n.id === noteId);
+  const note = useMemo(
+    () => notes.find((n) => n.id === noteId),
+    [notes, noteId]
+  );
   const [localTitle, setLocalTitle] = useState("");
   const [localBody, setLocalBody] = useState("");
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const hasInitialized = useRef(false);
+  const lastSyncedNoteIdRef = useRef<string | null>(null);
 
-  // Initialize local state once when note data first becomes available
+  // Sincronizar estado local cuando cambia la nota (por ID) o cuando llega del contexto
   useEffect(() => {
-    if (note && !hasInitialized.current) {
-      setLocalTitle(note.title);
-      setLocalBody(note.body);
-      hasInitialized.current = true;
-    }
-  }, [note]);
+    if (!note || note.id !== noteId) return;
+    if (lastSyncedNoteIdRef.current === noteId) return;
+    lastSyncedNoteIdRef.current = noteId;
+    setLocalTitle(note.title);
+    setLocalBody(note.body);
+  }, [note, noteId]);
 
-  // Autosave — noteId is stable for this component instance (URL-based routing)
+  // Autosave con debounce
   useEffect(() => {
-    if (!hasInitialized.current) return;
-    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-    saveTimerRef.current = setTimeout(() => {
+    if (lastSyncedNoteIdRef.current !== noteId) return;
+    const timer = setTimeout(() => {
       updateNote(noteId, { title: localTitle, body: localBody });
-    }, 400);
+    }, AUTOSAVE_MS);
+    saveTimerRef.current = timer;
     return () => {
-      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+      clearTimeout(timer);
+      saveTimerRef.current = null;
     };
-  }, [localTitle, localBody]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [noteId, localTitle, localBody, updateNote]);
 
-  if (!note) {
-    return (
-      <div className="flex-1 flex items-center justify-center text-neutral-600 select-none">
-        <div className="text-center">
-          <div className="text-4xl mb-3">✦</div>
-          <p className="text-sm">
-            {isSyncing ? "Cargando…" : "Nota no encontrada"}
-          </p>
-        </div>
-      </div>
-    );
-  }
+  if (!note) return <EditorEmpty isSyncing={isSyncing} />;
 
   return (
     <div className="flex-1 flex flex-col h-full overflow-hidden">
       {/* Title */}
-      <div className="px-12 pt-8 pb-2 flex-shrink-0">
+      <div className="px-12 pt-8 pb-2 shrink-0">
         <input
           type="text"
           value={localTitle}
