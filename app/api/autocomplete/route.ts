@@ -1,28 +1,27 @@
 import OpenAI from "openai";
 import { NextRequest } from "next/server";
 
-const PROVIDER_CONFIG: Record<string, { baseURL: string; requiresKey: boolean }> = {
-  openai: { baseURL: "https://api.openai.com/v1", requiresKey: true },
-  groq:   { baseURL: "https://api.groq.com/openai/v1", requiresKey: true },
-  ollama: { baseURL: "http://localhost:11434/v1", requiresKey: false },
-};
-
 export async function POST(req: NextRequest) {
   const authHeader = req.headers.get("authorization") ?? "";
   const apiKey = authHeader.startsWith("Bearer ") ? authHeader.slice(7).trim() : "";
 
   try {
-    const { text, model = "llama-3.1-8b-instant", provider = "groq" } = await req.json();
+    const { text, model = "gpt-4o-mini", provider = "openai" } = await req.json();
 
-    const config = PROVIDER_CONFIG[provider] ?? PROVIDER_CONFIG.groq;
+    if (provider !== "openai") {
+      return Response.json(
+        { completion: "", error: "Solo se admite provider openai" },
+        { status: 400 }
+      );
+    }
 
-    if (config.requiresKey && !apiKey) {
+    if (!apiKey) {
       return Response.json({ completion: "", error: "API key requerida" }, { status: 401 });
     }
 
     const openai = new OpenAI({
-      apiKey: apiKey || "ollama",
-      baseURL: config.baseURL,
+      apiKey,
+      baseURL: "https://api.openai.com/v1",
     });
 
     const response = await openai.chat.completions.create({

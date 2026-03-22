@@ -1,12 +1,16 @@
 import { test, expect } from "@playwright/test";
 
+function noteIdFromUrl(url: string): string | null {
+  const m = url.match(/\/notes\/([^/?#]+)/i);
+  return m?.[1] ?? null;
+}
+
 test.describe("Notas (sin login, localStorage)", () => {
   test("al abrir / muestra mensaje o redirige a la primera nota", async ({
     page,
   }) => {
     await page.goto("/");
     await expect(page).toHaveURL(/\//);
-    // Puede mostrar "Cargando…", "Seleccioná o creá una nota" o redirigir a /notes/...
     const content = await page.textContent("body");
     const hasLoading =
       content?.includes("Cargando") ||
@@ -36,22 +40,37 @@ test.describe("Notas (sin login, localStorage)", () => {
     const titleInput = page.locator('input[placeholder="Sin título"]').first();
     await titleInput.waitFor({ state: "visible", timeout: 8000 });
     await titleInput.fill("Nota A");
-    await page.waitForTimeout(800);
+    const idA = noteIdFromUrl(page.url());
+    expect(idA).toBeTruthy();
+    await page.waitForTimeout(1200);
 
+    const urlBeforeSecond = page.url();
     await page.getByTestId("sidebar-new-note").click();
-    await page.waitForURL(/\/notes\//, { timeout: 15000 });
+    await page.waitForURL(
+      (u) => u.href !== urlBeforeSecond && u.href.includes("/notes/"),
+      { timeout: 15000 }
+    );
+    const idB = noteIdFromUrl(page.url());
+    expect(idB).toBeTruthy();
+    expect(idB).not.toBe(idA);
+
     const titleInput2 = page.locator('input[placeholder="Sin título"]').first();
     await titleInput2.waitFor({ state: "visible", timeout: 5000 });
     await titleInput2.fill("Nota B");
-    await page.waitForTimeout(800);
+    await page.waitForTimeout(1200);
 
-    await page.getByText("Nota A", { exact: true }).first().click({ timeout: 15000 });
-    await page.waitForTimeout(500);
-    await expect(page.locator('input[placeholder="Sin título"]').first()).toHaveValue("Nota A");
+    const sidebar = page.getByTestId("notes-sidebar");
+    await sidebar.getByTestId(`note-row-${idA}`).click({ timeout: 15000 });
+    await expect(page).toHaveURL(new RegExp(`/notes/${idA}(/|$)`), { timeout: 10000 });
+    await expect(page.locator('input[placeholder="Sin título"]').first()).toHaveValue("Nota A", {
+      timeout: 15000,
+    });
 
-    await page.getByText("Nota B", { exact: true }).first().click({ timeout: 15000 });
-    await page.waitForTimeout(500);
-    await expect(page.locator('input[placeholder="Sin título"]').first()).toHaveValue("Nota B");
+    await sidebar.getByTestId(`note-row-${idB}`).click({ timeout: 15000 });
+    await expect(page).toHaveURL(new RegExp(`/notes/${idB}(/|$)`), { timeout: 10000 });
+    await expect(page.locator('input[placeholder="Sin título"]').first()).toHaveValue("Nota B", {
+      timeout: 15000,
+    });
   });
 });
 
@@ -65,6 +84,13 @@ test.describe("Notas (con login, BD)", () => {
     await page.locator('input[type="password"]').fill(TEST_PASSWORD);
     await page.getByRole("button", { name: /entrar/i }).click();
     await expect(page).toHaveURL(/\/(notes\/[a-z0-9-]+)?$/i, { timeout: 10000 });
+    const listRes = await page.request.get("/api/notes");
+    expect(listRes.ok()).toBeTruthy();
+    const list = (await listRes.json()) as { id: string }[];
+    for (const n of list) {
+      const del = await page.request.delete(`/api/notes/${n.id}`);
+      expect(del.ok()).toBeTruthy();
+    }
   });
 
   test("después de login se ven notas o mensaje para crear", async ({
@@ -90,8 +116,7 @@ test.describe("Notas (con login, BD)", () => {
     const titleInput = page.locator('input[placeholder="Sin título"]').first();
     await titleInput.waitFor({ state: "visible", timeout: 5000 });
     await titleInput.fill("Nota desde E2E");
-    await page.waitForTimeout(600);
-    await expect(titleInput).toHaveValue("Nota desde E2E");
+    await expect(titleInput).toHaveValue("Nota desde E2E", { timeout: 15000 });
   });
 
   test("crear dos notas, cambiar entre ellas y ver títulos", async ({
@@ -101,20 +126,41 @@ test.describe("Notas (con login, BD)", () => {
     await page.waitForTimeout(1000);
     await page.getByTestId("sidebar-new-note").click();
     await page.waitForURL(/\/notes\//, { timeout: 15000 });
-    await page.locator('input[placeholder="Sin título"]').first().fill("BD Nota 1");
-    await page.waitForTimeout(800);
+    await page.getByTestId("note-title-input").fill("BD Nota 1");
+    await expect(page.getByTestId("note-title-input")).toHaveValue("BD Nota 1", {
+      timeout: 5000,
+    });
+    const id1 = noteIdFromUrl(page.url());
+    expect(id1).toBeTruthy();
+    await expect(page.getByTestId(`note-row-${id1}`)).toContainText("BD Nota 1", {
+      timeout: 15000,
+    });
+    await page.waitForTimeout(500);
 
+    const urlBeforeNote2 = page.url();
     await page.getByTestId("sidebar-new-note").click();
-    await page.waitForURL(/\/notes\//, { timeout: 15000 });
+    await page.waitForURL(
+      (u) => u.href !== urlBeforeNote2 && u.href.includes("/notes/"),
+      { timeout: 15000 }
+    );
+    const id2 = noteIdFromUrl(page.url());
+    expect(id2).toBeTruthy();
+    expect(id2).not.toBe(id1);
+
     await page.locator('input[placeholder="Sin título"]').first().fill("BD Nota 2");
-    await page.waitForTimeout(800);
+    await page.waitForTimeout(1200);
 
-    await page.getByText("BD Nota 1", { exact: true }).first().click({ timeout: 15000 });
-    await page.waitForTimeout(500);
-    await expect(page.locator('input[placeholder="Sin título"]').first()).toHaveValue("BD Nota 1");
+    const sidebar = page.getByTestId("notes-sidebar");
+    await sidebar.getByTestId(`note-row-${id1}`).click({ timeout: 15000 });
+    await expect(page).toHaveURL(new RegExp(`/notes/${id1}(/|$)`), { timeout: 10000 });
+    await expect(page.locator('input[placeholder="Sin título"]').first()).toHaveValue("BD Nota 1", {
+      timeout: 15000,
+    });
 
-    await page.getByText("BD Nota 2", { exact: true }).first().click({ timeout: 15000 });
-    await page.waitForTimeout(500);
-    await expect(page.locator('input[placeholder="Sin título"]').first()).toHaveValue("BD Nota 2");
+    await sidebar.getByTestId(`note-row-${id2}`).click({ timeout: 15000 });
+    await expect(page).toHaveURL(new RegExp(`/notes/${id2}(/|$)`), { timeout: 10000 });
+    await expect(page.locator('input[placeholder="Sin título"]').first()).toHaveValue("BD Nota 2", {
+      timeout: 15000,
+    });
   });
 });

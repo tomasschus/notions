@@ -270,7 +270,6 @@ export function RichEditor({
   const prevContentRef = useRef<string>(content);
   const { state: webllmState, load, complete } = useWebLLM();
 
-  // Load WebLLM when provider is "browser"
   useEffect(() => {
     if (provider === "browser" && webllmState.status === "idle") {
       load(model);
@@ -294,13 +293,12 @@ export function RichEditor({
       abortRef.current = null;
     }
 
-    const needsKey = provider !== "ollama" && provider !== "browser";
-    if (needsKey && !apiKey) return;
+    if (provider === "off") return;
+    if (provider === "openai" && !apiKey) return;
     if (plainText.trim().length < 10) return;
 
-    const isLocal = provider === "browser" || provider === "ollama";
     const ctx = title ? `# ${title}\n\n${plainText}` : plainText;
-    const contextText = isLocal ? ctx : ctx.slice(-2000);
+    const contextText = provider === "browser" ? ctx : ctx.slice(-2000);
 
     timerRef.current = setTimeout(async () => {
       if (provider === "browser") {

@@ -1,14 +1,22 @@
 "use client";
 
-import { useState } from "react";
+import dynamic from "next/dynamic";
+import { useState, type ReactNode } from "react";
 import { NotesProvider } from "@/context/NotesContext";
 import { Sidebar } from "@/components/Sidebar";
-import { SettingsModal } from "@/components/SettingsModal";
+
+const SettingsModal = dynamic(
+  () =>
+    import("@/components/SettingsModal").then((m) => ({
+      default: m.SettingsModal,
+    })),
+  { ssr: false }
+);
 
 export default function NotesLayout({
   children,
 }: {
-  children: React.ReactNode;
+  children: ReactNode;
 }) {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 

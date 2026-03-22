@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect, Dispatch, SetStateAction } from "react";
+import { useState, useEffect, useRef, Dispatch, SetStateAction } from "react";
+import { debounce } from "@/lib/debounce";
 
 function readFromStorage<T>(key: string, initial: T): T {
   if (typeof window === "undefined") return initial;
@@ -13,11 +14,22 @@ function readFromStorage<T>(key: string, initial: T): T {
   return initial;
 }
 
+const WRITE_MS = 400;
+
 export function useLocalStorage<T>(
   key: string,
   initial: T
 ): [T, Dispatch<SetStateAction<T>>] {
   const [value, setValue] = useState<T>(() => readFromStorage(key, initial));
+  const debouncedWriteRef = useRef(
+    debounce((k: string, v: T) => {
+      try {
+        localStorage.setItem(k, JSON.stringify(v));
+      } catch {
+        // ignore write errors
+      }
+    }, WRITE_MS)
+  );
 
   useEffect(() => {
     try {
@@ -31,11 +43,15 @@ export function useLocalStorage<T>(
   }, [key]);
 
   useEffect(() => {
-    try {
-      localStorage.setItem(key, JSON.stringify(value));
-    } catch {
-      // ignore write errors
-    }
+    debouncedWriteRef.current(key, value);
+    return () => {
+      debouncedWriteRef.current.cancel();
+      try {
+        localStorage.setItem(key, JSON.stringify(value));
+      } catch {
+        // ignore
+      }
+    };
   }, [key, value]);
 
   return [value, setValue];

@@ -21,6 +21,20 @@ async function globalSetup() {
   } catch {
     console.warn("db seed failed");
   }
+  try {
+    execSync("npx tsx scripts/e2e-reset-notes.ts", {
+      cwd: root,
+      stdio: "inherit",
+      env: {
+        ...process.env,
+        DATABASE_URL:
+          process.env.DATABASE_URL ||
+          "postgresql://notions:notions@localhost:5432/notions",
+      },
+    });
+  } catch {
+    console.warn("e2e note cleanup failed");
+  }
 }
 
 export default globalSetup;

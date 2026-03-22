@@ -32,6 +32,7 @@ function NoteItemComponent({ note, isActive, onSelect, onDelete }: NoteItemProps
 
   return (
     <div
+      data-testid={`note-row-${note.id}`}
       onClick={handleClick}
       className={`group relative flex items-start px-3 py-2.5 rounded-lg cursor-pointer transition-colors ${
         isActive
@@ -44,8 +45,8 @@ function NoteItemComponent({ note, isActive, onSelect, onDelete }: NoteItemProps
           {note.title || "Sin título"}
         </p>
         <p className="text-xs mt-0.5 truncate opacity-60">
-          {note.body
-            ? note.body.replace(/\n/g, " ").slice(0, 40) || "Nota vacía"
+          {note.preview
+            ? note.preview.replace(/\n/g, " ").slice(0, 40) || "Nota vacía"
             : "Nota vacía"}
         </p>
         <p className="text-xs mt-0.5 opacity-40">{formatDate(note.updatedAt)}</p>

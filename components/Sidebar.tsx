@@ -5,6 +5,7 @@ import { signOut } from "next-auth/react";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { useNotesContext } from "@/context/NotesContext";
+import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { NoteItem } from "./NoteItem";
 
 interface SidebarProps {
@@ -19,6 +20,7 @@ export function Sidebar({ onOpenSettings }: SidebarProps) {
   const router = useRouter();
   const pathname = usePathname();
   const [search, setSearch] = useState("");
+  const debouncedSearch = useDebouncedValue(search, 300);
 
   const activeNoteId = useMemo(
     () =>
@@ -29,15 +31,15 @@ export function Sidebar({ onOpenSettings }: SidebarProps) {
   );
 
   const filteredNotes = useMemo(() => {
-    const q = search.toLowerCase();
+    const q = debouncedSearch.toLowerCase();
     return [...notes]
       .filter(
         (n) =>
           n.title.toLowerCase().includes(q) ||
-          n.body.toLowerCase().includes(q)
+          n.preview.toLowerCase().includes(q)
       )
       .sort((a, b) => b.updatedAt - a.updatedAt);
-  }, [notes, search]);
+  }, [notes, debouncedSearch]);
 
   const handleCreateNote = useCallback(async () => {
     const id = await createNote();
@@ -64,7 +66,10 @@ export function Sidebar({ onOpenSettings }: SidebarProps) {
   );
 
   return (
-    <div className="w-60 flex flex-col h-full bg-neutral-900 border-r border-neutral-800">
+    <div
+      data-testid="notes-sidebar"
+      className="w-60 flex flex-col h-full bg-neutral-900 border-r border-neutral-800"
+    >
       {/* Header */}
       <div className="px-3 pt-4 pb-2">
         <div className="flex items-center justify-between mb-3">

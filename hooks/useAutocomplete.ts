@@ -37,17 +37,16 @@ export function useAutocomplete(
     setGhost("");
     runningRef.current = false;
 
-    const needsKey = provider !== "ollama" && provider !== "browser";
-    if (needsKey && !apiKey) return;
+    if (provider === "off") return;
+    if (provider === "openai" && !apiKey) return;
     if (provider === "browser" && !webllmComplete) return;
     if (text.trim().length < 10) return;
 
     timerRef.current = setTimeout(async () => {
       runningRef.current = true;
 
-      // Local providers get full text; remote providers get last 2000 chars
-      const isLocal = provider === "browser" || provider === "ollama";
-      const contextText = isLocal ? text : text.slice(-2000);
+      const contextText =
+        provider === "browser" ? text : text.slice(-2000);
 
       if (provider === "browser" && webllmComplete) {
         try {
