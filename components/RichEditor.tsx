@@ -265,6 +265,9 @@ export function RichEditor({
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const prevNoteIdRef = useRef<string | null>(null);
+  const needSyncContentRef = useRef(false);
+  const prevContentRef = useRef<string>(content);
   const { state: webllmState, load, complete } = useWebLLM();
 
   // Load WebLLM when provider is "browser"
@@ -390,15 +393,25 @@ export function RichEditor({
     },
   });
 
-  // Reset content when switching notes
+  // Al cambiar de nota: marcar que hay que sincronizar; aplicar cuando exista el editor.
+  // Importante: si el contenido llega antes de que `editor` exista, no actualizar
+  // `prevContentRef` en ese momento; si no, al montar el editor prev === content y
+  // nunca se llama a setContent (nota vacía en prod con más latencia).
   useEffect(() => {
-    if (editor) {
+    if (noteId !== prevNoteIdRef.current) {
+      prevNoteIdRef.current = noteId;
+      needSyncContentRef.current = true;
+    }
+    if (editor && needSyncContentRef.current) {
+      needSyncContentRef.current = false;
+      prevContentRef.current = content;
       editor.commands.setContent(content || "<p></p>");
       setGhost(editor, "");
       setHasGhost(false);
+    } else if (editor && content !== prevContentRef.current) {
+      prevContentRef.current = content;
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [noteId]);
+  }, [noteId, content, editor]);
 
   if (!editor) return null;
 
