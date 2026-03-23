@@ -19,11 +19,16 @@ export default function NotesLayout({
   children: ReactNode;
 }) {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
   return (
     <NotesProvider>
       <div className="flex h-screen bg-neutral-950 text-neutral-100 overflow-hidden">
-        <Sidebar onOpenSettings={() => setIsSettingsOpen(true)} />
+        <Sidebar
+          onOpenSettings={() => setIsSettingsOpen(true)}
+          isCollapsed={isSidebarCollapsed}
+          onToggleCollapse={() => setIsSidebarCollapsed((c) => !c)}
+        />
         {children}
       </div>
       <SettingsModal
