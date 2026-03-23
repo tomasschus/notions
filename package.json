@@ -31,17 +31,18 @@
     "@tiptap/pm": "^2.27.2",
     "@tiptap/react": "^2.27.2",
     "@tiptap/starter-kit": "^2.27.2",
+    "@types/turndown": "^5.0.6",
     "bcryptjs": "^3.0.3",
     "next": "16.1.6",
     "next-auth": "^4.24.13",
     "openai": "^6.27.0",
     "react": "19.2.3",
-    "react-dom": "19.2.3"
+    "react-dom": "19.2.3",
+    "turndown": "^7.2.2"
   },
   "devDependencies": {
     "@playwright/test": "^1.49.0",
     "@tailwindcss/postcss": "^4",
-    "tsx": "^4.19.0",
     "@types/bcryptjs": "^2.4.6",
     "@types/node": "^20",
     "@types/react": "^19",
@@ -50,6 +51,7 @@
     "eslint-config-next": "16.1.6",
     "prisma": "^5.22.0",
     "tailwindcss": "^4",
+    "tsx": "^4.19.0",
     "typescript": "^5",
     "vitest": "^3.2.4"
   }

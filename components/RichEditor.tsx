@@ -10,6 +10,7 @@ import Image from "@tiptap/extension-image";
 import { Plugin, PluginKey } from "@tiptap/pm/state";
 import { Decoration, DecorationSet } from "@tiptap/pm/view";
 import { useEffect, useRef, useState } from "react";
+import TurndownService from "turndown";
 import { Provider } from "@/types";
 import { useWebLLM } from "@/hooks/useWebLLM";
 
@@ -159,11 +160,13 @@ function Btn({
   active,
   onClick,
   title,
+  ariaLabel,
   children,
 }: {
   active?: boolean;
   onClick: () => void;
   title?: string;
+  ariaLabel?: string;
   children: React.ReactNode;
 }) {
   return (
@@ -173,6 +176,7 @@ function Btn({
         onClick();
       }}
       title={title}
+      aria-label={ariaLabel ?? title}
       className={`px-1.5 py-1 rounded text-sm transition-colors ${
         active
           ? "bg-neutral-600 text-neutral-100"
@@ -186,6 +190,74 @@ function Btn({
 
 function Sep() {
   return <div className="w-px h-4 bg-neutral-700 mx-1" />;
+}
+
+// ─── Download helpers ─────────────────────────────────────────────────────────
+
+function escapeHtml(text: string): string {
+  if (!text) return "";
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function sanitizeFilename(name: string): string {
+  return name.replace(/[<>:"/\\|?*\x00-\x1f]/g, "_").trim() || "nota";
+}
+
+function downloadMarkdown(title: string, html: string) {
+  const td = new TurndownService({
+    headingStyle: "atx",
+    bulletListMarker: "-",
+    codeBlockStyle: "fenced",
+  });
+  const body = td.turndown(html);
+  const content = title ? `# ${title}\n\n${body}` : body;
+  const blob = new Blob([content], { type: "text/markdown" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `${sanitizeFilename(title || "nota")}.md`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function downloadPdf(title: string, html: string) {
+  const win = window.open("", "_blank");
+  if (!win) {
+    alert("No se pudo abrir la ventana de impresión. Comprueba que el navegador no bloquea las ventanas emergentes.");
+    return;
+  }
+  win.document.write(`<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>${escapeHtml(title || "Nota")}</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; padding: 48px; max-width: 800px; margin: 0 auto; color: #1a1a1a; line-height: 1.6; }
+    h1 { font-size: 2em; margin-bottom: 0.5em; }
+    h2 { font-size: 1.5em; }
+    h3 { font-size: 1.2em; }
+    pre { background: #f5f5f5; padding: 12px; border-radius: 4px; overflow-x: auto; }
+    code { background: #f0f0f0; padding: 2px 4px; border-radius: 2px; font-size: 0.9em; font-family: monospace; }
+    pre code { background: none; padding: 0; }
+    blockquote { border-left: 3px solid #ccc; margin-left: 0; padding-left: 16px; color: #555; font-style: italic; }
+    img { max-width: 100%; height: auto; }
+    ul, ol { padding-left: 1.5em; }
+    @media print { body { padding: 0; } }
+  </style>
+</head>
+<body>
+  ${title ? `<h1>${escapeHtml(title)}</h1>` : ""}
+  ${html}
+</body>
+</html>`);
+  win.document.close();
+  win.focus();
+  win.print();
 }
 
 // ─── Color picker ─────────────────────────────────────────────────────────────
@@ -549,20 +621,31 @@ export function RichEditor({
           }}
         />
 
-        {/* Ghost hint */}
-        {hasGhost && (
-          <span className="ml-auto text-xs text-neutral-600">Tab para aceptar · Esc para descartar</span>
-        )}
+        {/* Right-side items: download buttons, ghost hint, WebLLM loading */}
+        <div className="ml-auto flex items-center gap-1.5">
+          {/* Download buttons */}
+          <Btn onClick={() => downloadMarkdown(title ?? "", editor.getHTML())} title="Descargar como Markdown" ariaLabel="Descargar nota como archivo Markdown">
+            <span className="font-mono text-xs">.md</span>
+          </Btn>
+          <Btn onClick={() => downloadPdf(title ?? "", editor.getHTML())} title="Descargar como PDF" ariaLabel="Descargar nota como archivo PDF">
+            <span className="font-mono text-xs">.pdf</span>
+          </Btn>
 
-        {/* WebLLM loading */}
-        {provider === "browser" && webllmState.status === "loading" && (
-          <div className="ml-auto flex items-center gap-2">
-            <div className="w-20 h-1 bg-neutral-800 rounded-full overflow-hidden">
-              <div className="h-full bg-neutral-500 rounded-full transition-all" style={{ width: `${webllmState.progress}%` }} />
+          {/* Ghost hint */}
+          {hasGhost && (
+            <span className="text-xs text-neutral-600 ml-1">Tab para aceptar · Esc para descartar</span>
+          )}
+
+          {/* WebLLM loading */}
+          {provider === "browser" && webllmState.status === "loading" && (
+            <div className="flex items-center gap-2 ml-1">
+              <div className="w-20 h-1 bg-neutral-800 rounded-full overflow-hidden">
+                <div className="h-full bg-neutral-500 rounded-full transition-all" style={{ width: `${webllmState.progress}%` }} />
+              </div>
+              <span className="text-xs text-neutral-600">{webllmState.progress}%</span>
             </div>
-            <span className="text-xs text-neutral-600">{webllmState.progress}%</span>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       {/* Editor content */}
